@@ -1,0 +1,140 @@
+# install CoMut and packages - DO NOT CHANGE THIS CELL
+!pip -q install comut
+from comut import comut
+from comut import fileparsers
+import palettable
+import pandas as pd
+import matplotlib.pyplot as plt
+%matplotlib inline
+%config InlineBackend.figure_format = 'retina'
+
+# if running in Colab, import tutorial data
+import sys
+if 'google.colab' in sys.modules:
+  !apt-get install subversion -q > /dev/null
+  !svn export -q --force https://github.com/vanallenlab/comut/trunk/examples/tutorial_data
+  plt.rcParams['font.family'] = 'Liberation Sans' # Colab lacks most fonts, so download the notebook locally to change fonts
+
+# don't change the names of these variables
+maf_path = 'sample_data/df_reduced.tsv' # change this to the path of your MAF, e.g. 'mutation.maf'
+genes = ['ASXL2','CDKN1A','ERCC2','CREBBP','PIK3CA', 'KMT2A', 'ATM','KMT2C','KMT2D','ERBB2','STAG2','SPTAN1','ELF3','EP300','RB1','FGFR3','FBXW7','TSC1','FAT1', 'ERBB3','KDM6A','TP53'] # change this list to the genes you want in the comut, from bottom to top
+
+figsize = (10,3) # the size of the figure - changes the shape of the squares in the comut
+dpi = 300 # change the output resolution
+extension = '.svg' # extension for saving - can otherwise be .pdf, .png, .jpg, etc
+
+# You can provide a list of samples to order your comut (from left to right). If none is provided, it will be calculated from your MAF.
+samples = None 
+
+
+x_padding = 0.04 # the x distance between patches in comut
+y_padding = 0.04 # the y distance between patches in comut
+tri_padding = 0.03 # the distance between triangles in comut
+
+# mapping of mutation type to color. Only these mutation types are shown. Can be any valid matplotlib color, e.g. 'blue', #ffa500, or (1,1,1).
+vivid_10 = palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+mut_mapping = {'Missense': vivid_10[5], 'Nonsense': vivid_10[0], 'In frame indel': vivid_10[1],
+               'Frameshift indel': vivid_10[4], 'Splice site': vivid_10[9], 'Absent': {'facecolor': 'grey', 'alpha': 0.2}}
+
+# give priority and borders
+#priority = ['genes']
+#borders = ['Framshift indel']
+
+# read in the maf
+mutation_data = pd.read_csv(maf_path, sep = '\t')
+
+# Use a helper function to parse the maf. This requires a Tumor_Sample_Barcode, Hugo_Symbol, and Variant_Classification column. It will
+# rename variant types to be more visually appealing (eg Missense_Mutation -> Missense). Only certain coding variants are shown.
+mutation_df = fileparsers.parse_maf(mutation_data)
+mutation_df.head(2)
+
+# add CNA data
+cna_data = pd.read_csv('sample_data/bladder_cdkn2a2.csv')
+cna_data_mapping = {'Baseline': {'facecolor':'none', 'edgecolor':'black', 'linewidth': 1}, 'Deletion': {'facecolor':'brown', 'edgecolor':'black', 'linewidth': 1}}
+
+# try cdk del and fgfr2 amp
+#cna_data = pd.read_csv('sample_data/bladder_cdkn2a3.csv')
+#cna_data_mapping = {'Baseline': {'facecolor':'none', 'edgecolor':'black', 'linewidth': 1}, 'Deletion': {'facecolor':'brown', 'edgecolor':'black', 'linewidth': 1}, 'Amplification': {'facecolor':'lightblue', 'edgecolor':'black', 'linewidth': 1}}
+
+example_comut.add_categorical_data(cna_data, name='CNA', mapping = cna_data_mapping)
+
+# import indicator data
+#Indicator_data = pd.read_csv('sample_data/bladder_indicator2.csv')
+#Indicator_data.head()
+
+# add indicators first, since they will be at the bottom
+#indicator_kwargs = {'color': 'black', 'marker': 'o', 'linewidth': 1.5, 'markersize': 5}
+#example_comut.add_sample_indicators(Indicator_data, name = 'Same patient', plot_kwargs = indicator_kwargs)
+
+
+# add data to the CoMut object
+example_comut.add_categorical_data(mutation_df, name = 'Mutation type', category_order = genes, mapping = mut_mapping, tick_style = 'italic')
+
+# plot comut and add unified legend
+#example_comut.plot_comut(x_padding = x_padding, y_padding = y_padding, tri_padding = tri_padding, figsize = figsize)
+#example_comut.add_unified_legend()
+
+Invasion_data = pd.read_csv('sample_data/bladder_invasion2.csv')  
+Invasion_data.head(2)
+
+Smoking_data = pd.read_csv('sample_data/bladder_smoking2.csv') 
+Smoking_data.head(2)
+
+#Surgery_data = pd.read_csv('sample_data/bladder_surg2.csv')  
+#Surgery_data.head(2)
+
+NAC_data = pd.read_csv('sample_data/bladder_NAC2.csv') 
+NAC_data.head(2)
+
+mut_burden_df = pd.read_csv('sample_data/bladder_syn_nonsyn.csv')
+mut_burden_df.head(3)
+
+#mut_freq_df = pd.read_csv('sample_data/bladder_mutfreq.csv')
+#mut_freq_df.head(3)
+
+mut_freq_df = pd.read_csv('sample_data/bladder_mutmouw.csv')
+mut_freq_df.head(3)
+
+Invasion_data_mapping = {'NMIBC':vivid_10[6], 'MIBC': vivid_10[2]}
+Smoking_data_mapping = {'Smoker':vivid_10[6], 'Nonsmoker': vivid_10[2], 'Unknown':vivid_10[4]}
+#Surgery_data_mapping = {'RC':vivid_10[6], 'TURBT': vivid_10[2], 'PC':vivid_10[4]}
+NAC_data_mapping = {'Yes':vivid_10[6], 'No': vivid_10[2], 'Unknown':vivid_10[4]}
+#side_mapping = {'Mutation frequency in TCGA': 'grey', 'Mut': 'black'}
+side_mapping = {'Mut': 'grey'}
+#cna_data_mapping = {'Baseline': {'facecolor':'none', 'edgecolor':'black', 'linewidth': 1}, 'LOH': {'facecolor':'brown', 'edgecolor':'black', 'linewidth': 1}}
+
+# define mapping, shrink
+bar_mapping = {'Nonsynonymous': 'orange', 'Synonymous': 'darkblue'}
+bar_kwargs = {'width': 1}
+
+structure = [['CNA'], ['Mutation type'], ['Invasion'], ['Smoking'], ['NAC'], ['Mutation burden']]
+
+#example_comut.add_categorical_data(cna_data, name='CNA', mapping = cna_data_mapping)
+example_comut.add_categorical_data(Invasion_data, name='Invasion', mapping = Invasion_data_mapping)
+example_comut.add_categorical_data(Smoking_data, name='Smoking', mapping = Smoking_data_mapping)
+#example_comut.add_categorical_data(Surgery_data, name='Surgery', mapping = Surgery_data_mapping)
+example_comut.add_categorical_data(NAC_data, name='NAC', mapping = NAC_data_mapping)
+#example_comut.add_side_bar_data(tcga_mut_freq, paired_name = 'Mutation type', name = 'Mutation frequency in TCGA', position = 'left', 
+#                               mapping = side_mapping, xlabel = '% Mutation in MIBC TCGA')
+#example_comut.add_side_bar_data(mouw_mut_freq, paired_name = 'Mutation type', name = 'Mut', position = 'right', 
+#                               mapping = side_mapping, xlabel = '% Mut')
+
+
+example_comut.add_side_bar_data(mut_freq_df, paired_name = 'Mutation type', name = 'Mutation Freq', mapping = side_mapping, xlabel = '% Muts', position = 'left')
+
+# add bar data
+example_comut.add_bar_data(mut_burden_df, name = 'Mutation burden', mapping = bar_mapping, stacked = True, bar_kwargs = bar_kwargs, ylabel = '# Muts')
+
+
+# plot CoMut and save
+example_comut.plot_comut(x_padding = 0.05, y_padding = 0.04, tri_padding = 0.03, hspace = 0.08, subplot_hspace = 0.01,
+                           figsize = (14, 8))
+
+example_comut.add_unified_legend()
+
+
+# the sample labels are always added to the bottom plot in the comut - remove them.
+#example_comut.axes['Same patient'].set_xticklabels([])
+
+example_comut.figure.savefig('mutation_comut_clinical_cna' + extension, bbox_inches = 'tight', dpi = dpi)
+
