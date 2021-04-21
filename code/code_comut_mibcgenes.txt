@@ -171,3 +171,66 @@ example_comut.plot_comut(figsize = (5,16), x_padding = 0.04, y_padding = 0.04, t
 example_comut.axes['Same patient'].set_xticklabels([])
 
 example_comut.figure.savefig('mutation_comut_pairs' + extension, dpi = dpi, bbox_inches = 'tight')
+
+###  The following code generates the CoMut plot in figure 2B
+maf_path = 'sample_data/df_reduced.tsv' # change this to the path of your MAF, e.g. 'mutation.maf'
+genes = ['MDC1','RAD51B','BRCA2','ERCC2','ATM','ERCC5','POLE','PALB2','RAD54L','CHEK2','BRCA1','MSH6','FANCA'] # change this list to the genes you want in the comut, from bottom to top
+
+figsize = (10,3) # the size of the figure - changes the shape of the squares in the comut
+dpi = 300 # change the output resolution
+extension = '.svg' # extension for saving - can otherwise be .pdf, .png, .jpg, etc
+
+# You can provide a list of samples to order your comut (from left to right). If none is provided, it will be calculated from your MAF.
+samples = None
+
+from matplotlib import rcParams
+custom_rcParams = {'font.family': 'arial', 'font.size': 20}
+rcParams.update(custom_rcParams)
+
+x_padding = 0.04 # the x distance between patches in comut
+y_padding = 0.04 # the y distance between patches in comut
+tri_padding = 0.03 # the distance between triangles in comut
+
+# mapping of mutation type to color. Only these mutation types are shown. Can be any valid matplotlib color, e.g. 'blue', #ffa500, or (1,1,1).
+vivid_10 = palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+mut_mapping = {'Missense': vivid_10[5], 'Nonsense': vivid_10[0], 'In frame indel': vivid_10[1], 'Frameshift indel': vivid_10[4], 'Splice site': vivid_10[9], 'Absent': {'facecolor': 'grey', 'alpha': 0.2}}
+
+# read in the maf
+mutation_data = pd.read_csv(maf_path, sep= '\t')
+
+# Use a helper function to parse the maf. This requires a Tumor_Sample_Barcode, Hugo_Symbol, and Variant_Classification column. It will
+# rename variant types to be more visually appealing (eg Missense_Mutation -> Missense). Only certain coding variants are shown.
+mutation_df = fileparsers.parse_maf(mutation_data)
+mutation_df.head(2)
+
+# import indicator data
+Indicator_data = pd.read_csv('sample_data/bladder_indicator2.csv')
+Indicator_data.head()
+
+# add indicators first, since they will be at the bottom
+indicator_kwargs = {'color': 'black', 'marker': 'o', 'linewidth': 2, 'markersize': 8}
+example_comut.add_sample_indicators(Indicator_data, name = 'Same patient', plot_kwargs = indicator_kwargs)
+
+# add data to the CoMut object
+example_comut.add_categorical_data(mutation_df, name = 'Mutation type', category_order = genes, mapping = mut_mapping, tick_style = 'italic')
+
+# plot comut and add unified legend
+example_comut.plot_comut(x_padding = x_padding, y_padding = y_padding, tri_padding = tri_padding, figsize = figsize)
+example_comut.add_unified_legend()
+
+drr_mut_freq = pd.read_csv('sample_data/bladder_drrmut.csv')
+drr_mut_freq.head(2)
+
+side_mapping = {'Mutation frequency': 'darkgrey'}
+bar_kwargs = {'height': 0.8}
+example_comut.add_side_bar_data(drr_mut_freq, paired_name = 'Mutation type', name = 'Mutation frequency DRR genes', position = 'right', mapping = side_mapping, xlabel = '% Mutation', bar_kwargs = bar_kwargs)
+
+# plot comut and add unified legend
+#example_comut.plot_comut(x_padding = x_padding, y_padding = y_padding, tri_padding = tri_padding, figsize = figsize)
+example_comut.plot_comut(figsize = (12,8), x_padding = 0.04, y_padding = 0.04, tri_padding = 0.03, wspace = 0.03, hspace = 0.03)
+example_comut.add_unified_legend()
+
+# the sample labels are always added to the bottom plot in the comut - remove them.
+example_comut.axes['Same patient'].set_xticklabels([])
+
+example_comut.figure.savefig('mutation_comut_drr' + extension, dpi = dpi, bbox_inches = 'tight')
