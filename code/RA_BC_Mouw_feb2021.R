@@ -256,7 +256,6 @@ allindel_tcga <- tcga_bca_maf%>%
         dplyr::count(Variant_Classification %in% variants_allindel)%>%
         filter(`Variant_Classification %in% variants_allindel`== "TRUE")%>%
         select(patient.id, allindel = n)
-
 alldel_tcga <- tcga_bca_maf%>%
         group_by(patient.id)%>%
         dplyr::count(Variant_Classification %in% variants_alldel)%>%
