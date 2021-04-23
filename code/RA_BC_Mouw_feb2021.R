@@ -169,18 +169,6 @@ pheatmap::pheatmap(mat = xrt_bca_v3_cosm$cosine_similarities, cluster_rows = FAL
 
 maftools::plotSignatures(nmfRes = xrt_bca_sig, title_size = 1.5, sig_db = "SBS")
 
-## ===================================================================================
-## Maftools df_reduced for ALL DNA damage response genes
-dnarepair_genes <- c("MLH1", "MSH2", "MSH6", "PMS1", "PMS2", "ERCC2", "ERCC3", "ERCC4", "ERCC5", "BRCA1", "BRCA2", "MRE11A", "NBN", "RAD50", "RAD51", "RAD51B", "RAD51D", "RAD52", "RAD54L", "BRIP1", "FANCA", "FANCC", "PALB2", "RAD51C", "BLM", "ATM", "ATR", "CHEK1", "CHEK2", "MDC1", "POLE", "MUTYH", "PARP1", "RECQL4")
-
-## RColorBrewer color pallet for variant classifications
-# vc_col <- RColorBrewer::brewer.pal(n=6, name = "Dark2")
-# names(vc_col) <- c("Frame_Shift_Ins", "Frame_Shift_Del", "Missense_Mutation", "Splice_Site", "Nonsense_Mutation", "Multi_Hit")
-# print(vc_col)
-# oncoplot(maf = xrt_bca_maf,  colors= vc_col, genes = dnarepair_genes, draw_titv = TRUE)
-
-## mutated DNA repair genes in MOUW ----> FANCA, MSH6, BRACA1, CHEK2, RAD54L, PALB2, POLE, ERCC5, ATM, MSH2, ERCC2, BRCA2, RAD51B, MDC1
-
 ### ============================================================================
 #read subset of bladder cancer mafs from TCGA mc3 and clinical info
 tcga_bca_maf <- read.table("mc3.blca.maf", header = TRUE, sep = "")
