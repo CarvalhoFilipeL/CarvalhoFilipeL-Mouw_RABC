@@ -1,0 +1,294 @@
+##### Comutation plots in Fig. 2, Fig. 3B and Suppl Fig. 5 were generated using a Google Colab notebook tool built by Crowdis, J. et all CoMut: Visualizing integrated molecular information with comutation plots. Bioinformatics (2020) https://academic.oup.com/bioinformatics/article/36/15/4348/5851837
+
+### The following code was used to generate Fig. 2
+
+## install CoMut and packages - DO NOT CHANGE THIS CELL
+!pip -q install comut
+from comut import comut
+from comut import fileparsers
+import palettable
+import pandas as pd
+import matplotlib.pyplot as plt
+%matplotlib inline
+%config InlineBackend.figure_format = 'retina'
+
+## if running in Colab, import tutorial data
+import sys
+if 'google.colab' in sys.modules:
+  !apt-get install subversion -q > /dev/null
+  !svn export -q --force https://github.com/vanallenlab/comut/trunk/examples/tutorial_data
+  plt.rcParams['font.family'] = 'Liberation Sans' # Colab lacks most fonts, so download the notebook locally to change fonts
+
+## Specify MAF file and generate comut
+maf_path = 'sample_data/df_reduced.tsv'
+genes = ['ASXL2','CDKN1A','ERCC2', 'ATM','KMT2C','PIK3CA','TSC1','KMT2A','ERBB2','CREBBP','FAT1','STAG2','FGFR3','KMT2D','FBXW7','SPTAN1','ELF3','EP300', 'RB1','ERBB3','KDM6A','TP53']
+
+## Appearance of the comut
+figsize = (10,3) 
+dpi = 300 
+extension = '.svg' 
+
+## Samples
+qc_pass_samples = ['RP-2203_BS-18-J55458-1_v3_Exome_OnPrem', 'RP-2203_BS10A12568-1_v3_Exome_OnPrem', 'RP-2203_BS10X56565-1_v3_Exome_OnPrem', 'RP-2203_BS11J39831-1_v3_Exome_OnPrem',
+                   'RP-2203_BS11M23658-1_v3_Exome_OnPrem', 'RP-2203_BS12A07361-1_v3_Exome_OnPrem', 'RP-2203_BS12M42934-1_v3_Exome_OnPrem', 'RP-2203_BS12X09833-1_v3_Exome_OnPrem',
+                   'RP-2203_BS13D59794-1_v3_Exome_OnPrem', 'RP-2203_BS13W48457-1_v3_Exome_OnPrem', 'RP-2203_BS14F09288-1_v3_Exome_OnPrem', 'RP-2203_BS14G11774-1_v3_Exome_OnPrem',
+                   'RP-2203_BS14K37490-1_v3_Exome_OnPrem', 'RP-2203_BS14M34353-1_v3_Exome_OnPrem', 'RP-2203_BS16K52951-1_v3_Exome_OnPrem', 'RP-2203_BS16X63420-1_v3_Exome_OnPrem',
+                   'RP-2203_BS17G37115-1_v3_Exome_OnPrem', 'RP-2203_BS17J06357-1_v3_Exome_OnPrem', 'RP-2203_BS17R22951-1_v3_Exome_OnPrem', 'RP-2203_BS18N13604-1_v3_Exome_OnPrem',
+                   'RP-2203_S0026655T-1_v3_Exome_OnPrem', 'RP-2203_S0410913M-1_v1_Exome_OnPrem']
+x_padding = 0.04 # the x distance between patches in comut
+y_padding = 0.04 # the y distance between patches in comut
+tri_padding = 0.03 # the distance between triangles in comut
+
+## mapping of mutation type to color. 
+vivid_10 = palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+mut_mapping = {'Missense': vivid_10[5], 'Nonsense': vivid_10[0], 'In frame indel': vivid_10[1],
+               'Frameshift indel': vivid_10[4], 'Splice site': vivid_10[9], 'Absent': {'facecolor': 'grey', 'alpha': 0.2}}
+
+## Create basic Comut and organize samples by mutation
+# read in the maf
+mutation_data = pd.read_csv(maf_path, sep = '\t')
+
+# Use a helper function to parse the maf. This requires a Tumor_Sample_Barcode, Hugo_Symbol, and Variant_Classification column. It will
+# rename variant types to be more visually appealing (eg Missense_Mutation -> Missense). Only certain coding variants are shown.
+mutation_df = fileparsers.parse_maf(mutation_data)
+mutation_df.head(2)
+
+curated_genes = genes = ['ASXL2','CDKN1A','ERCC2', 'ATM','KMT2C','PIK3CA','TSC1','KMT2A','ERBB2','CREBBP','FAT1','STAG2','FGFR3','KMT2D','FBXW7','SPTAN1','ELF3','EP300', 'RB1','ERBB3','KDM6A','TP53'] 
+
+# subset to these mutations in the parsed maf
+interesting_df = mutation_df[mutation_df['category'].isin(curated_genes)]
+
+# define the order based on how many samples are mutated 
+mut_order = list(interesting_df.groupby('category').size().sort_values(ascending = False).index)
+
+# qc_pass_samples is just a list of sample names
+order_df = pd.DataFrame(0, index = qc_pass_samples, columns = mut_order)
+
+# we fill in this matrix, putting a 1 if the sample is mutated in that gene
+for index, row in interesting_df.iterrows():
+    sample, gene = row[['sample', 'category']].values
+    order_df.loc[sample, gene] = 1
+
+# next we sort
+order_df = order_df.sort_values(by = mut_order, ascending = False)
+
+# and we extract the sample order from this dataframe
+sample_order = list(order_df.index)
+sample_order[:10]
+
+example_comut = comut.CoMut()
+example_comut.samples = sample_order
+
+# add CNA data
+cna_data = pd.read_csv('sample_data/bladder_cdkn2a2.csv')
+cna_data_mapping = {'Baseline': {'facecolor':'none', 'edgecolor':'black', 'linewidth': 1}, 'Deletion': {'facecolor':'brown', 'edgecolor':'black', 'linewidth': 1}}
+example_comut.add_categorical_data(cna_data, name='CNA', mapping = cna_data_mapping)
+
+# add mutation data 
+example_comut.add_categorical_data(mutation_df, name = 'Mutation type', category_order = curated_genes, value_order= mut_order, mapping = mut_mapping, tick_style = 'italic')
+
+# add clinical, genomic and pathologic data
+Invasion_data = pd.read_csv('sample_data/bladder_invasion2.csv')  
+Smoking_data = pd.read_csv('sample_data/bladder_smoking2.csv') 
+NAC_data = pd.read_csv('sample_data/bladder_NAC2.csv')
+mut_burden_df = pd.read_csv('sample_data/bladder_syn_nonsyn.csv')
+mut_freq_df = pd.read_csv('sample_data/bladder_mutmouw.csv')
+
+
+# define mapping
+Invasion_data_mapping = {'NMIBC':vivid_10[6], 'MIBC': vivid_10[2]}
+Smoking_data_mapping = {'Smoker':vivid_10[6], 'Nonsmoker': vivid_10[2], 'Unknown':vivid_10[4]}
+NAC_data_mapping = {'Yes':vivid_10[6], 'No': vivid_10[2], 'Unknown':vivid_10[4]}
+side_mapping = {'Mut': 'grey'}
+bar_mapping = {'Nonsynonymous': 'orange', 'Synonymous': 'darkblue'}
+bar_kwargs = {'width': 0.8}
+
+structure = [['CNA'], ['Mutation type'], ['Invasion'], ['Smoking'], ['NAC'], ['Mutation burden']]
+
+
+example_comut.add_categorical_data(Invasion_data, name='Invasion', mapping = Invasion_data_mapping)
+example_comut.add_categorical_data(Smoking_data, name='Smoking', mapping = Smoking_data_mapping)
+example_comut.add_categorical_data(NAC_data, name='NAC', mapping = NAC_data_mapping)
+example_comut.add_side_bar_data(mut_freq_df, paired_name = 'Mutation type', name = 'Mutation Freq', mapping = side_mapping, xlabel = '% Mutated samples', position = 'left')
+example_comut.add_bar_data(mut_burden_df, name = 'Mutation burden', mapping = bar_mapping, stacked = True, bar_kwargs = bar_kwargs, ylabel = '# Muts')
+
+# plot CoMut and save
+example_comut.plot_comut(x_padding = 0.05, y_padding = 0.04, tri_padding = 0.03, hspace = 0.08, subplot_hspace = 0.01,
+                           figsize = (14, 8))
+
+example_comut.add_unified_legend()
+
+example_comut.figure.savefig('mutation_comut_clinical_cna' + extension, bbox_inches = 'tight', dpi = dpi)
+
+### ================================================================================
+### The following code was used to generate Suppl Fig. 5 (matched RA-MIBC and RA-NMIBC for two patients)
+
+# MAF file and genes
+maf_path = 'sample_data/df_pairs.tsv'
+genes = ['FBXW7', 'ERBB3','KDM6A']
+
+figsize = (5,16) 
+dpi = 300 
+extension = '.svg' 
+samples = None
+
+from matplotlib import rcParams
+custom_rcParams = {'font.family': 'arial', 'font.size': 20}
+rcParams.update(custom_rcParams)
+
+x_padding = 0.04 # the x distance between patches in comut
+y_padding = 0.04 # the y distance between patches in comut
+tri_padding = 0.03 # the distance between triangles in comut
+
+# mapping of mutation type to color. 
+vivid_10 = palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+mut_mapping = {'Missense': vivid_10[5], 'Nonsense': vivid_10[0], 'In frame indel': vivid_10[1],
+               'Frameshift indel': vivid_10[4], 'Splice site': vivid_10[9], 'Absent': {'facecolor': 'grey', 'alpha': 0.2}}
+
+# read in the maf
+mutation_data = pd.read_csv(maf_path,sep = '\t')
+mutation_df = fileparsers.parse_maf(mutation_data)
+
+# import indicator data
+Indicator_data = pd.read_csv('sample_data/bladder_indicator3.csv')
+Indicator_data.head()
+
+#add indicators first, since they will be at the bottom
+indicator_kwargs = {'color': 'black', 'marker': 'o', 'linewidth': 1.5, 'markersize': 5}
+example_comut.add_sample_indicators(Indicator_data, name = 'Same patient', plot_kwargs = indicator_kwargs)
+
+# add data to the CoMut object
+example_comut.add_categorical_data(mutation_df, name = 'Mutation type', category_order = genes, mapping = mut_mapping, tick_style = 'italic')
+
+Invasion_data = pd.read_csv('sample_data/bladder_invasion3.csv')  
+Invasion_data.head(2)
+
+Smoking_data = pd.read_csv('sample_data/bladder_smoking3.csv') 
+Smoking_data.head(2)
+
+NAC_data = pd.read_csv('sample_data/bladder_NAC3.csv') 
+NAC_data.head(2)
+
+mut_burden_df = pd.read_csv('sample_data/bladder_syn_nonsyn3.csv')
+mut_burden_df.head(3)
+
+#mut_freq_df = pd.read_csv('sample_data/bladder_mutfreq.csv')
+#mut_freq_df.head(3)
+
+#mut_freq_df = pd.read_csv('sample_data/bladder_mutmouw.csv')
+#mut_freq_df.head(3)
+
+Invasion_data_mapping = {'NMIBC':vivid_10[6], 'MIBC': vivid_10[2]}
+Smoking_data_mapping = {'Smoker':vivid_10[6], 'Nonsmoker': vivid_10[2], 'Unknown':vivid_10[4]}
+NAC_data_mapping = {'Yes':vivid_10[6], 'No': vivid_10[2], 'Unknown':vivid_10[4]}
+side_mapping = {'Mut': 'grey'}
+
+# define mapping, shrink
+bar_mapping = {'Nonsynonymous': 'orange', 'Synonymous': 'darkblue'}
+bar_kwargs = {'width': 0.9}
+
+structure = ['Mutation type'], ['Invasion'], ['Smoking'], ['NAC'], ['Mutation burden']]
+
+example_comut.add_categorical_data(Invasion_data, name='Invasion', mapping = Invasion_data_mapping)
+example_comut.add_categorical_data(Smoking_data, name='Smoking', mapping = Smoking_data_mapping)
+example_comut.add_categorical_data(NAC_data, name='NAC', mapping = NAC_data_mapping)
+
+# add bar data
+example_comut.add_bar_data(mut_burden_df, name = 'Mutation burden', mapping = bar_mapping, stacked = True, bar_kwargs = bar_kwargs, ylabel = '# Muts')
+
+# plot CoMut and save
+example_comut.plot_comut(figsize = (5,16), x_padding = 0.04, y_padding = 0.04, tri_padding = 0.03, wspace = 0.03, hspace = 0.03)
+example_comut.add_unified_legend()
+
+# the sample labels are always added to the bottom plot in the comut - remove them.
+example_comut.axes['Same patient'].set_xticklabels([])
+
+example_comut.figure.savefig('mutation_comut_pairs' + extension, dpi = dpi, bbox_inches = 'tight')
+
+### ================================================================================
+### The following code was used to generate comut plot in Fig. 3B (mutations in HR and DNA repair genes)
+
+# MAF file and genes
+maf_path = 'sample_data/df_ddrmut_samples.tsv' 
+genes = ['MDC1', 'ATR','ATM','RAD51B','BRCA2','ERCC5','ERCC2', 'PMS2','MSH2','PALB2','RAD54L','POLE','CHEK2','BRCA1','MSH6','FANCA']
+
+
+figsize = (10,3) 
+dpi = 300 
+extension = '.svg' 
+
+qc_pass_samples = ['RP-2203_BS-18-J55458-1_v3_Exome_OnPrem', 'RP-2203_BS10A12568-1_v3_Exome_OnPrem', 'RP-2203_BS10X56565-1_v3_Exome_OnPrem', 'RP-2203_BS11J39831-1_v3_Exome_OnPrem',
+                  'RP-2203_BS12A07361-1_v3_Exome_OnPrem', 'RP-2203_BS12X09833-1_v3_Exome_OnPrem',
+                   'RP-2203_BS13D59794-1_v3_Exome_OnPrem', 'RP-2203_BS14F09288-1_v3_Exome_OnPrem',
+                   'RP-2203_BS14K37490-1_v3_Exome_OnPrem', 'RP-2203_BS14M34353-1_v3_Exome_OnPrem', 'RP-2203_BS16K52951-1_v3_Exome_OnPrem', 'RP-2203_BS16X63420-1_v3_Exome_OnPrem',
+                   'RP-2203_BS17G37115-1_v3_Exome_OnPrem', 'RP-2203_BS17J06357-1_v3_Exome_OnPrem', 'RP-2203_BS17R22951-1_v3_Exome_OnPrem', 'RP-2203_BS18N13604-1_v3_Exome_OnPrem',
+                   'RP-2203_S0026655T-1_v3_Exome_OnPrem', 'RP-2203_S0410913M-1_v1_Exome_OnPrem'] 
+
+from matplotlib import rcParams
+custom_rcParams = {'font.family': 'arial', 'font.size': 15}
+rcParams.update(custom_rcParams)
+
+x_padding = 0.04 
+y_padding = 0.04 
+tri_padding = 0.03 
+
+# mapping of mutation type to color.
+vivid_10 = palettable.cartocolors.qualitative.Vivid_10.mpl_colors
+mut_mapping = {'Missense': vivid_10[5], 'Nonsense': vivid_10[0], 'In frame indel': vivid_10[1],
+               'Frameshift indel': vivid_10[4], 'Splice site': vivid_10[9], 'Absent': {'facecolor': 'grey', 'alpha': 0.2}}
+
+# read in the maf
+mutation_data = pd.read_csv(maf_path, sep = '\t')
+
+# Use a helper function to parse the maf. This requires a Tumor_Sample_Barcode, Hugo_Symbol, and Variant_Classification column. It will
+# rename variant types to be more visually appealing (eg Missense_Mutation -> Missense). Only certain coding variants are shown.
+mutation_df = fileparsers.parse_maf(mutation_data)
+mutation_df.head(2)
+
+curated_genes = genes = ['MDC1', 'ATR','ATM','RAD51B','BRCA2','ERCC5','ERCC2', 'PMS2','MSH2','PALB2','RAD54L','POLE','CHEK2','BRCA1','MSH6','FANCA'] # change this list to the genes you want in the comut, from bottom to top
+
+
+# subset to these mutations in the parsed maf
+interesting_df = mutation_df[mutation_df['category'].isin(curated_genes)]
+
+# define the order based on how many samples are mutated 
+mut_order = list(interesting_df.groupby('category').size().sort_values(ascending = False).index)
+
+# qc_pass_samples is just a list of sample names
+order_df = pd.DataFrame(0, index = qc_pass_samples, columns = mut_order)
+
+# we fill in this matrix, putting a 1 if the sample is mutated in that gene
+for index, row in interesting_df.iterrows():
+    sample, gene = row[['sample', 'category']].values
+    order_df.loc[sample, gene] = 1
+
+# next we sort
+order_df = order_df.sort_values(by = mut_order, ascending = False)
+
+# and we extract the sample order from this dataframe
+sample_order = list(order_df.index)
+sample_order[:10]
+
+example_comut = comut.CoMut()
+example_comut.samples = sample_order
+
+# read in the maf
+mutation_data = pd.read_csv(maf_path, sep= '\t')
+
+# Use a helper function to parse the maf. This requires a Tumor_Sample_Barcode, Hugo_Symbol, and Variant_Classification column. It will
+# rename variant types to be more visually appealing (eg Missense_Mutation -> Missense). Only certain coding variants are shown.
+mutation_df = fileparsers.parse_maf(mutation_data)
+mutation_df.head(2)
+
+# add data to the CoMut object
+example_comut.add_categorical_data(mutation_df, name = 'Mutation type', category_order = genes, mapping = mut_mapping, tick_style = 'italic')
+drr_mut_freq = pd.read_csv('sample_data/bladder_drrmut.csv')
+side_mapping = {'Mutation frequency': 'darkgrey'}
+bar_kwargs = {'height': 0.8}
+example_comut.add_side_bar_data(drr_mut_freq, paired_name = 'Mutation type', name = 'Mutation frequency DRR genes', position = 'right', 
+                              mapping = side_mapping, xlabel = '% Mutated samples', bar_kwargs = bar_kwargs)
+
+# plot comut and add unified legend
+example_comut.plot_comut(figsize = (12,8), x_padding = 0.04, y_padding = 0.04, tri_padding = 0.03, wspace = 0.03, hspace = 0.03)
+example_comut.add_unified_legend()
+example_comut.figure.savefig('mutation_comut_drr' + extension, dpi = dpi, bbox_inches = 'tight')
