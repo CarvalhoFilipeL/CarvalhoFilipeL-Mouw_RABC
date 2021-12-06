@@ -13,7 +13,7 @@ library(ggpubr)
 library(wesanderson)
 
 
-## Survival analysis first Fig 1
+## Survival analysis Fig 1
 # OS Mouw and TCGA 
 mouw_surv <- read.csv("survival_data.csv", header = TRUE)
 
